@@ -1,6 +1,11 @@
 {
   "name": "tumble-bumble",
-  "version": "0.0.1",
+  "version": "0.0.2",
+  "author": {
+    "name": "Aaron McCall",
+    "email": "aaron@andyet.net"  
+  },
+  "repository": "git@github.com/aaronmccall/tumble-bumble",
   "description": "a tool to convert tumblr posts to bumble-format markdown files",
   "main": "./lib/parse.js",
   "bin": {
