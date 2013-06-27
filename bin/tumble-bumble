@@ -1,0 +1,93 @@
+#!/usr/bin/env node
+var parser = require('../lib/parse'),
+    request = require('request').defaults({ strictSSL: true, json: true }),
+    _ = require('underscore'),
+    async = require('async'),
+    colors = require('colors'),
+    path = require('path'),
+    fs = require('fs'),
+    yetify = require('yetify'),
+    optimist = require('optimist')
+        .usage('Usage: $0 [tumblr name | URL]'.blue)
+        .boolean(['photos'])
+        .string(['type', 'output', 'limit', 'help'])
+        .describe({
+            limit: 'The maximum number of posts to retrieve'.blue,
+            output: 'The output directory for writing post files. (Must already exist)'.blue,
+            // photos: 'Download photos from photo posts',
+            type:   'The type of posts for which you want to generate files.'.blue
+        })
+        .alias({ type: 't', output: 'o', limit: 'l'})
+        ['default']({
+            images: false,
+            limit: 'all',
+            output: '.',
+            type: 'text'
+        })
+        .check(function (args) {
+            var msg;
+            if (!args._ || args._.length === 0) msg = 'Tumblr URL not specified'.red;
+            if (args.t && args.t !== 'text') msg = 'Only text posts are currently supported.'.red;
+            if (args.help || msg) {
+                console.log('\n' + msg);
+                console.log(optimist.help() + '\ntumble-bumble by ' + '@'.magenta + 'aaronmccall'.blue + ' at ' + yetify.logo());
+                process.exit(0);
+            }
+        }),
+    argv = optimist.argv,
+    blogName = getBlogName(argv._[0]),
+    apiKey = 'bRmtS8TfqSoPY7caMS0f7yHqwHo69MbN1a18DeNov4HyvC9xn0',
+    apiURL = 'http://api.tumblr.com/v2/blog/' + blogName,
+    infoURL = apiURL + '/info?api_key=' + apiKey;
+    postURL = apiURL + '/posts' +
+                // if there's a post type, add it here
+                (argv.t ? '/' + argv.t : '') +
+                // tumble-bumble api key
+                '?api_key=' + apiKey,
+    outDir = path.resolve(argv.o);
+
+// function to properly format the blog name
+// accepts:
+// 1. full url with http:// or https://
+// 2. fully qualified domain (FQDN) name such as blog.mydomain.com or foo.tumblr.com
+// 3. bare tumblr name such as foo where the FQDN is foo.tumblr.com
+function getBlogName(tumblrName) {
+    var rgxResult;
+    if (tumblrName.match(/^http:/)) {
+        rgxResult = tumblrName.match(/^https?:\/\/([^\/]+)/);
+        if (rgxResult) tumblrName = rgxResult[1];
+    }
+    if (!~tumblrName.indexOf('.')) {
+        tumblrName += '.tumblr.com';
+    }
+    return tumblrName;
+}
+var total_posts = (argv.l === 'all') ? null : parseInt(argv.l, 10),
+    offset=0,
+    limit;
+
+console.log('Retrieving posts from ' + blogName);
+
+request.get(infoURL, function (err, res, data) {
+    total_posts = total_posts || parseInt(data.response.blog.posts, 10);
+    limit = (total_posts < 20) ? total_posts : 20;
+    console.log('offset: ' + offset + ' limit: ' + limit + ' total_posts: ' + total_posts);
+    async.doWhilst(
+        function (cb) {
+            request.get(postURL + '&offset=' + offset + '&limit=' + limit, function (err, res, data) {
+                var posts = data.response.posts;
+                parser.parse(posts, outDir, function () {
+                    var remaining;
+                    offset += limit;
+                    remaining = (total_posts - offset);
+                    limit = (remaining > limit) ? limit : remaining;
+                    cb();
+                });
+            });
+        },
+        function () { return offset < total_posts; },
+        function (err) {
+            console.log('\nfinished\n');
+        }
+    );
+});
