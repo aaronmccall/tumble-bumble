@@ -2,6 +2,15 @@
 
 A tool to migrate your tumblr posts to bumble-friendly markdown files
 
-## to-do
+## post type support
 
-- add media handling via oembed/embed.ly
+* text
+* chat: 
+  Renders chat session as a list (`<ul>`) of messages (`<li>`). Each message is also a list (`<ul>`) of one (message only) or two (author and message) items (`<li>`).
+* link
+* quote
+* photo _(only one photo per post currently)_
+* audio
+* video
+
+## to-do
