@@ -6,26 +6,27 @@ var Parser = require('../lib/parser'),
     colors = require('colors'),
     path = require('path'),
     fs = require('fs'),
+    hyper = require('hyperquest'),
     yetify = require('yetify'),
     allowed_types = ['text', 'photo', 'quote', 'link', 'chat', 'audio', 'video'],
     optimist = require('optimist')
         .usage('Usage: $0 [tumblr name | URL]'.blue)
-        .boolean(['images'/*, 'allow_html'*/])
-        .string(['type', 'output', 'limit', 'help', 'allow_html'])
+        .boolean(['download_images'])
+        .string(['type', 'output', 'limit', 'help'])
         .describe({
             limit: 'The maximum number of posts to retrieve'.blue,
-            output: 'The output directory for writing post files. (Must already exist)'.blue,
-            /*images: 'Download images from photo posts'.blue,*/
-            type:   'The type of posts for which you want to generate files.'.blue/*,
-            allow_html: 'Allow embedded html in markdown files'*/
+            output_directory: 'The output directory for posts. (Must already exist)'.blue,
+            download_images: 'Download images from photo posts.'.blue,
+            image_path: 'The output directory for images. (Must already exist)'.blue,
+            type:   'The type of posts for which you want to generate files.'.blue
         })
-        .alias({ type: 't', output: 'o', limit: 'l'})
+        .alias({ type: 't', output_directory: 'o', limit: 'l', download_images: 'i', image_path: 'I'})
         ['default']({
-            images: false,
+            download_images: false,
+            image_path: 'public/images',
             limit: 'all',
-            output: '.',
-            type: ''/*,
-            allow_html: false*/
+            output_directory: 'blog',
+            type: ''
         })
         .check(function (args) {
             var msg;
@@ -48,10 +49,19 @@ var Parser = require('../lib/parser'),
                 // tumble-bumble api key
                 '?api_key=' + apiKey,
     outDir = path.resolve(argv.o),
-    parser = new Parser();
-
+    parser = new Parser(argv);
     // Subscribe to 
     parser.on('post_added', function (post, filename) {
+        if (argv.i && post.type === 'photo') {
+            // Do image downloading stuff here
+            var req = hyper(post.meta.original_photo_url),
+                image = post.getImageFileName(),
+                imageURL = '/' + path.join(argv.I.replace(/^[\.]{0,2}/, '').replace(/public/, '').replace(/^\//, ''), image),
+                file = fs.createWriteStream(path.join(path.resolve(argv.I), image));
+            req.pipe(file);
+            post.body = post.body.replace(post.meta.original_photo_url, imageURL);
+        }
+
         fs.writeFile(path.join(outDir, filename), post.getBumbleText(), function (err) {
             if (err) return console.log('Tried to write ' + filename.blue + ', but I got this error:\n' + err.toString().red);
             console.log('generated ' + filename.blue);
