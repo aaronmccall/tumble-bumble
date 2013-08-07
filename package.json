@@ -1,9 +1,9 @@
 {
   "name": "tumble-bumble",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "author": {
     "name": "Aaron McCall",
-    "email": "aaron@andyet.net"  
+    "email": "aaron@andyet.net"
   },
   "repository": "git@github.com/aaronmccall/tumble-bumble",
   "description": "a tool to convert tumblr posts to bumble-format markdown files",
@@ -20,6 +20,7 @@
     "async": "~0.2.9",
     "colors": "~0.6.0-1",
     "yetify": "0.0.1",
-    "oembed": "~0.1"
+    "oembed": "~0.1",
+    "hyperquest": "~0.1.7"
   }
 }
