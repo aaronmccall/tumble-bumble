@@ -53,19 +53,22 @@ var Parser = require('../lib/parser'),
     // Subscribe to 
     parser.on('post_added', function (post, filename) {
         if (argv.i && post.type === 'photo') {
+            var image_list = (post.meta.original_photos||[]).concat(post.meta.thumbnails||[]);
             // Do image downloading stuff here
-            var req = hyper(post.meta.original_photo_url),
-                image = post.getImageFileName(),
-                imageURL = '/' + path.join(argv.I.replace(/^[\.]{0,2}/, '').replace(/public/, '').replace(/^\//, ''), image),
-                file = fs.createWriteStream(path.join(path.resolve(argv.I), image));
-            req.pipe(file);
-            post.body = post.body.replace(post.meta.original_photo_url, imageURL);
+            async.each(image_list, function (original_photo_url, cb) {
+                var req = hyper(original_photo_url),
+                    image = original_photo_url.split('/').pop(),
+                    imageURL = '/' + path.join(argv.I.replace(/^[\.]{0,2}/, '').replace(/public/, '').replace(/^\//, ''), image),
+                    file = fs.createWriteStream(path.join(path.resolve(argv.I), image));
+                req.pipe(file);
+                post.body = post.body.replace(post.meta.original_photo_url, imageURL);
+                cb();
+            }, function (err) {
+                writePost();
+            });
+        } else {
+            writePost();
         }
-
-        fs.writeFile(path.join(outDir, filename), post.getBumbleText(), function (err) {
-            if (err) return console.log('Tried to write ' + filename.blue + ', but I got this error:\n' + err.toString().red);
-            console.log('generated ' + filename.blue);
-        });
     });
 
 // function to properly format the blog name
