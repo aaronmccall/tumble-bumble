@@ -52,6 +52,12 @@ var Parser = require('../lib/parser'),
     parser = new Parser(argv);
     // Subscribe to 
     parser.on('post_added', function (post, filename) {
+        function writePost() {
+            fs.writeFile(path.join(outDir, filename), post.getBumbleText(), function (err) {
+                if (err) return console.log('Tried to write ' + filename.blue + ', but I got this error:\n' + err.toString().red);
+                console.log('generated ' + filename.blue);
+            });
+        }
         if (argv.i && post.type === 'photo') {
             var image_list = (post.meta.original_photos||[]).concat(post.meta.thumbnails||[]);
             // Do image downloading stuff here
